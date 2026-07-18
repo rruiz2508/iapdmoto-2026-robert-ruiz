@@ -30,6 +30,7 @@ import androidx.compose.material.icons.filled.PersonAdd
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material3.Button
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ElevatedCard
@@ -387,6 +388,7 @@ private fun PositionField(
     isError: Boolean,
     modifier: Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -396,6 +398,9 @@ private fun PositionField(
         isError = isError,
         supportingText = if (isError) ({ Text("Ingresá el cargo") }) else null,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+        ),
     )
 }
 
@@ -406,6 +411,7 @@ private fun DepartmentField(
     isError: Boolean,
     modifier: Modifier,
 ) {
+    val focusManager = LocalFocusManager.current
     OutlinedTextField(
         value = value,
         onValueChange = onValueChange,
@@ -415,6 +421,9 @@ private fun DepartmentField(
         isError = isError,
         supportingText = if (isError) ({ Text("Ingresá el departamento") }) else null,
         keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(
+            onNext = { focusManager.moveFocus(FocusDirection.Down) },
+        ),
     )
 }
 
@@ -454,6 +463,10 @@ private fun HireDateField(
     modifier: Modifier,
 ) {
     var showDatePicker by rememberSaveable { mutableStateOf(false) }
+    val datePickerState = rememberDatePickerState(
+        initialSelectedDateMillis = selectedDateMillis.takeIf { it != 0L }
+            ?: System.currentTimeMillis(),
+    )
 
     Column(modifier = modifier) {
         Text(
@@ -496,10 +509,6 @@ private fun HireDateField(
     }
 
     if (showDatePicker) {
-        val datePickerState = rememberDatePickerState(
-            initialSelectedDateMillis = selectedDateMillis.takeIf { it != 0L }
-                ?: System.currentTimeMillis(),
-        )
         DatePickerDialog(
             onDismissRequest = { showDatePicker = false },
             confirmButton = {
@@ -586,12 +595,44 @@ private fun EmployeeCard(
     employee: Employee,
     onDelete: () -> Unit,
 ) {
+    var showDeleteDialog by remember { mutableStateOf(false) }
+
     val details = listOf(
         EmployeeDetail(Icons.Default.Badge, "Cargo", employee.position),
         EmployeeDetail(Icons.Default.Business, "Departamento", employee.department),
         EmployeeDetail(Icons.Default.Payments, "Salario", formatSalary(employee.salary)),
         EmployeeDetail(Icons.Default.CalendarMonth, "Contratación", employee.hireDate),
     )
+
+    if (showDeleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteDialog = false },
+            title = { Text("¿Eliminar registro?") },
+            text = {
+                Text(
+                    "¿Estás seguro de que querés eliminar a ${employee.fullName}? " +
+                        "Esta acción no se puede deshacer."
+                )
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        showDeleteDialog = false
+                        onDelete()
+                    },
+                ) {
+                    Text("Aceptar")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { showDeleteDialog = false },
+                ) {
+                    Text("Cancelar")
+                }
+            },
+        )
+    }
 
     ElevatedCard(
         modifier = Modifier.fillMaxWidth(),
@@ -619,7 +660,7 @@ private fun EmployeeCard(
             HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
 
             FilledTonalButton(
-                onClick = onDelete,
+                onClick = { showDeleteDialog = true },
                 modifier = Modifier.align(Alignment.End),
             ) {
                 Icon(
